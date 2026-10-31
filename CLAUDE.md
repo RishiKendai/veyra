@@ -994,6 +994,7 @@ The user builds and publishes from the repository root. A tag `vX.Y.Z` pushed to
 | `.goreleaser.yaml` | Release recipe: builds, archives, checksums, Homebrew formula |
 | `.github/workflows/ci.yml` | Tests and cross-compile on every push / pull request |
 | `.github/workflows/release.yml` | Runs GoReleaser when a `v*` tag is pushed |
+| `.github/release-notes/<tag>.md` | Optional hand-written release notes for that tag (for example `v0.1.1.md`); when present they replace the generated changelog |
 | `install.sh` | macOS / Linux installer: installs the bundled binary, or downloads and checksum-verifies the latest release; puts `veyra` on the PATH |
 | `install.ps1` | Windows equivalent; adds the install folder to the user PATH |
 | `install.cmd` | Double-click launcher for `install.ps1` that bypasses the default script-execution block for that one run |

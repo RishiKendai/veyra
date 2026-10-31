@@ -16,10 +16,18 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # Hand-written notes win: put them in .github/release-notes/<tag>.md (for example v0.1.1.md).
+      # Without such a file the notes are generated from commit messages (see .goreleaser.yaml).
+      - name: Choose release notes
+        id: notes
+        run: |
+          f=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [ -f "$f" ]; then echo "args=release --clean --release-notes=$f" >> "$GITHUB_OUTPUT"
+          else echo "args=release --clean" >> "$GITHUB_OUTPUT"; fi
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean
+          args: ${{ steps.notes.outputs.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

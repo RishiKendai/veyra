@@ -42,8 +42,26 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# Used when a release has no hand-written notes file (see release.yml). Built from
+# commit messages since the previous tag, so write them as "feat: ...", "fix: ...".
 changelog:
   sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat(\(.+\))?!?:'
+      order: 0
+    - title: Fixes
+      regexp: '^fix(\(.+\))?!?:'
+      order: 1
+    - title: Other changes
+      order: 2
+  filters:
+    exclude:
+      - '^docs?(\(.+\))?:'
+      - '^test(\(.+\))?:'
+      - '^chore(\(.+\))?:'
+      - '^build(\(.+\))?:'
+      - '^ci(\(.+\))?:'
 
 # Needs the repository RishiKendai/homebrew-tap and a HOMEBREW_TAP_TOKEN secret
 # (a token with write access to that repository).
