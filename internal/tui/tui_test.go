@@ -438,7 +438,7 @@ func TestDeleteRequiresConfirmationAndThenTrashesAndUpdatesUI(t *testing.T) {
 	eq(t, h.m.confirm, "/root/video-copy.mkv")
 	eq(t, len(h.act.calls), 0) // nothing deleted yet
 	v := h.view()
-	for _, want := range []string{"Move “video-copy.mkv”", "to the Trash?", "Enter = confirm", "Enter Confirm delete"} {
+	for _, want := range []string{"Delete “video-copy.mkv”?", "Move to the Trash?", "Enter = confirm", "Enter Confirm delete"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("confirmation prompt missing %q:\n%s", want, v)
 		}
