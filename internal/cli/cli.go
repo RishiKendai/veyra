@@ -17,18 +17,20 @@ Find duplicate and visually similar images and videos.
 
 Usage:
   veyra                                  interactive menu
-  veyra -t <video|image> [-r] <directory>
+  veyra -t <video|image> [-r] [-a] <directory>
   veyra help
 
 Options:
   -t    Media type to scan: video or image (required)
   -r    Recursively scan nested directories
+  -a    Include hidden files and folders (skipped by default)
   -h    Show help (same as 'veyra help')
 
 Examples:
   veyra                                  pick what to scan from a menu
   veyra -t image .                       scan the current folder
   veyra -t image -r ~/Pictures
+  veyra -t image -r -a ~/Pictures        also look in hidden files and folders
   veyra -t video -r /Volumes/Media
 `
 
@@ -36,6 +38,7 @@ Examples:
 type Options struct {
 	Type        model.MediaType
 	Recursive   bool
+	Hidden      bool   // -a: include hidden files and folders
 	Root        string // absolute, cleaned
 	Help        bool
 	Version     bool
@@ -74,6 +77,8 @@ func Parse(args []string) (Options, error) {
 			o.Help = true
 		case a == "-r":
 			o.Recursive = true
+		case a == "-a":
+			o.Hidden = true
 		case a == "-t":
 			if i+1 >= len(args) {
 				return o, errors.New("flag -t requires a value (video or image)")

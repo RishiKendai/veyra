@@ -27,9 +27,13 @@ type Progress struct {
 type Options struct {
 	Root      string
 	Recursive bool
-	Classify  classify.Classifier
-	Workers   int // classifier concurrency; <=0 means 1
-	Progress  *Progress
+	// Hidden includes hidden files and folders (a leading dot, or the OS's own
+	// hidden flag). Off by default: hidden folders are not even entered. The
+	// root itself is always scanned, whatever its name.
+	Hidden   bool
+	Classify classify.Classifier
+	Workers  int // classifier concurrency; <=0 means 1
+	Progress *Progress
 	// Guard, if set, makes the scan wait for an external drive that
 	// disconnects and carry on when it returns, instead of skipping files.
 	Guard *volume.Guard
@@ -132,9 +136,17 @@ func Scan(ctx context.Context, opts Options) (Result, error) {
 				return cerr
 			}
 			path := filepath.Join(dir, e.Name())
+			if !opts.Hidden && hiddenName(e.Name()) {
+				continue // cheap check first: no stat for a dot-file
+			}
 			switch {
 			case e.IsDir(): // false for symlinks: they are never followed
 				if opts.Recursive {
+					if !opts.Hidden {
+						if fi, err := e.Info(); err == nil && hiddenAttr(fi) {
+							continue
+						}
+					}
 					if err := walk(path); err != nil {
 						return err
 					}
@@ -152,6 +164,9 @@ func Scan(ctx context.Context, opts Options) (Result, error) {
 					}
 					skip(path, err.Error(), true) // vanished or unreadable
 					continue
+				}
+				if !opts.Hidden && hiddenAttr(fi) {
+					continue // flagged hidden by the OS without a leading dot
 				}
 				prog.Seen.Add(1)
 				dev, ino, nlink := devIno(path, fi)

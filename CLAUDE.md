@@ -65,7 +65,8 @@ veyra                             # interactive menu (see below)
 
 - Only when stdin and stdout are terminals. Otherwise print the usage to stderr and exit 2, so scripts never hang.
 - Screen 1 offers: scan images, scan images (recursive), scan videos, scan videos (recursive), quit. Keys: arrows / j k, Enter, digits 1-4, Q / Esc / Ctrl+C. A video choice first checks that FFmpeg and FFprobe are installed and shows the install command if not.
-- Screen 2 is a folder browser starting in the current folder: Enter opens a folder, Left / Backspace goes up, `S` scans the current folder, `Tab` switches to typing or pasting a path (`~` and relative paths work), `.` toggles hidden folders, Esc goes back.
+- Screen 2 asks "Include hidden files and folders?" (default No; keys Up/Down, Enter, N, Y, Esc back). The answer is the same as passing `-a`.
+- Screen 3 is a folder browser starting in the current folder (it lists hidden folders only if the answer was Yes): Enter opens a folder, Left / Backspace goes up, `S` scans the current folder, `Tab` switches to typing or pasting a path (`~` and relative paths work), `.` toggles hidden folders, Esc goes back.
 - The chosen path goes through the same `cli.ValidateDir` as the command line, then the same scan and review flow runs. Code: `internal/menu`.
 
 ## Flags
@@ -74,6 +75,7 @@ veyra                             # interactive menu (see below)
 |---|---:|---|
 | `-t` | Yes | Media type: `video` or `image` |
 | `-r` | No | Recursively scan nested directories |
+| `-a` | No | Include hidden files and folders (user-approved addition; see "Hidden files" below) |
 | `-h` | No | Print help and exit |
 
 Rules:
@@ -89,7 +91,14 @@ Rules:
 - `-h` must work without requiring `-t` or a path.
 - Use standard Unix exit conventions where practical: zero for successful scans (including no matches), nonzero for invalid arguments or fatal scan failures.
 - Send progress, diagnostics, and warnings to stderr. Keep the TUI on the terminal and avoid mixing logs into its rendering.
-- Do not add flags such as `--json`, `--html`, `--exclude`, `--force`, or cache-management commands in v1 unless explicitly approved. Keep internal design extensible, but do not expand the CLI scope.
+### Hidden files
+
+- By default hidden files are skipped, and hidden folders are not entered (so `-r` never reads `.git`, `.thumbnails` and similar). `-a` (or "Yes" in the menu) includes them.
+- Hidden means: a name starting with `.` on every OS (this covers `.DS_Store` and the macOS `._*` files); on macOS also files flagged hidden with `chflags hidden`; on Windows the Hidden or System attribute.
+- The directory the user names is always scanned, even if its own name is hidden; only what is inside it is filtered.
+- Code: `internal/scanner/hidden*.go` and the walk in `scanner.go`. The macOS flag is tested; the Windows attribute check is compiled and vetted but has not been run on Windows.
+
+- Do not add flags other than `-t`, `-r`, `-a` and `-h`, such as `--json`, `--html`, `--exclude`, `--force`, or cache-management commands in v1 unless explicitly approved. Keep internal design extensible, but do not expand the CLI scope.
 
 Example help:
 

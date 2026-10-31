@@ -69,7 +69,7 @@ func run() int {
 		case res.Quit:
 			return 0
 		}
-		opts = cli.Options{Type: res.Type, Recursive: res.Recursive, Root: res.Root}
+		opts = cli.Options{Type: res.Type, Recursive: res.Recursive, Hidden: res.Hidden, Root: res.Root}
 	}
 	if err := checkDeps(opts.Type); err != nil {
 		fmt.Fprintf(os.Stderr, "veyra: %v\n", err)
@@ -93,7 +93,7 @@ func run() int {
 		go showProgress(os.Stderr, tracker, prog, done)
 	}
 	out, err := app.Run(ctx, app.Options{
-		Type: opts.Type, Recursive: opts.Recursive, Root: opts.Root, Progress: prog,
+		Type: opts.Type, Recursive: opts.Recursive, Hidden: opts.Hidden, Root: opts.Root, Progress: prog,
 		Report: tracker.Set,
 		OnVolume: func(down bool) {
 			if down {

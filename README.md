@@ -53,19 +53,28 @@ Images need nothing else.
 veyra                              # interactive menu: pick images/videos, recursive or not, then a folder
 veyra -t image ~/Pictures          # files directly inside the folder
 veyra -t image -r ~/Pictures       # recurse
+veyra -t image -r -a ~/Pictures    # also look in hidden files and folders
 veyra -t video -r /Volumes/Media
 veyra -t image .                   # the current folder
 veyra help                         # also: veyra -h, veyra version
 ```
 
 Run with no arguments, veyra shows four choices (scan images, images recursively, videos, videos recursively),
-then a folder browser (arrow keys to move, Enter to open a folder, `S` to scan the highlighted folder, `Tab`
+asks whether to include hidden files and folders (default: no), then shows a folder browser (arrow keys to move, Enter to open a folder, `S` to scan the highlighted folder, `Tab`
 to type or paste a path, `.` to show hidden folders). Without a terminal and without arguments it prints the
 usage and exits with status 2.
 
 On a terminal the results open in the TUI. When stdout is not a terminal (pipes, redirects) or there
 are no duplicates, a plain-text report is printed instead. Progress and warnings go to stderr.
 Exit status: 0 on success (including "no duplicates"), 2 for bad arguments, 1 for fatal errors, 130 if interrupted.
+
+## Hidden files
+
+Hidden files are skipped by default, and hidden folders are not entered, so `-r` never reads things like `.git`.
+Pass `-a` (or answer "Yes" in the menu) to include them. "Hidden" means a name starting with `.`
+(`.DS_Store`, macOS `._*` files), files macOS flags as hidden, and files with the Windows Hidden or System
+attribute. The folder you name is always scanned, even if its own name starts with a dot. Before this option
+existed, hidden files were scanned, so results may differ from earlier versions.
 
 ## The interface
 

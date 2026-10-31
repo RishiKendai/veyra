@@ -34,6 +34,7 @@ import (
 type Options struct {
 	Type      model.MediaType
 	Recursive bool
+	Hidden    bool // include hidden files and folders
 	Root      string
 	Progress  *scanner.Progress                   // optional, polled during the scan stage
 	Report    func(stage string, done, total int) // optional; stages are the progress.* names; called from worker goroutines
@@ -86,7 +87,7 @@ func Run(ctx context.Context, o Options) (Output, error) {
 	cl = cachedClassifier(cl, cc.get("classify-"+string(o.Type)+".cache", classifyCacheParams))
 	scanStart := prof.Start()
 	res, err := scanner.Scan(ctx, scanner.Options{
-		Root: o.Root, Recursive: o.Recursive, Classify: cl,
+		Root: o.Root, Recursive: o.Recursive, Hidden: o.Hidden, Classify: cl,
 		Workers: ioWorkers(o.Root, o.Type), Progress: prog, Guard: guard,
 	})
 	prof.Since("STAGE scan+classify", scanStart, 0)

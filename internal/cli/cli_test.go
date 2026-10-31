@@ -58,6 +58,21 @@ func TestParse(t *testing.T) {
 				t.Errorf("got %+v", o)
 			}
 		}},
+		{"hidden off by default", []string{"-t", "image", dir}, "", func(t *testing.T, o Options) {
+			if o.Hidden {
+				t.Error("Hidden must default to false")
+			}
+		}},
+		{"-a includes hidden", []string{"-t", "image", "-r", "-a", dir}, "", func(t *testing.T, o Options) {
+			if !o.Hidden || !o.Recursive {
+				t.Errorf("got %+v", o)
+			}
+		}},
+		{"-a after the path", []string{dir, "-t", "video", "-a"}, "", func(t *testing.T, o Options) {
+			if !o.Hidden {
+				t.Errorf("got %+v", o)
+			}
+		}},
 		{"flags after path", []string{dir, "-r", "-t", "image"}, "", nil},
 		{"spaces and unicode", []string{"-t", "image", spaced}, "", func(t *testing.T, o Options) {
 			if o.Root != spaced {

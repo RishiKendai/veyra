@@ -349,3 +349,27 @@ func TestRepeatScanServedFromCache(t *testing.T) {
 		}
 	}
 }
+
+// A copy that lives in a hidden folder is only found when hidden files are included.
+func TestHiddenFilesOnlyScannedWhenAsked(t *testing.T) {
+	root := tempRoot(t)
+	writePNG(t, filepath.Join(root, "photo.png"), pic(1))
+	writePNG(t, filepath.Join(root, ".backup", "photo-copy.png"), pic(1))
+	writePNG(t, filepath.Join(root, ".hidden-copy.png"), pic(1))
+	run := func(hidden bool) Output {
+		out, err := Run(context.Background(), Options{Type: model.Image, Root: root, Recursive: true, Hidden: hidden})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	if out := run(false); len(out.Groups) != 0 || out.Scanned != 1 {
+		t.Errorf("hidden off: groups=%v scanned=%d, want no groups and 1 file", summarize(root, out.Groups), out.Scanned)
+	}
+	out := run(true)
+	first := filepath.Join(".backup", "photo-copy.png")
+	want := map[string][]string{"EXACT:" + first: {first, ".hidden-copy.png", "photo.png"}}
+	if got := summarize(root, out.Groups); !reflect.DeepEqual(got, want) || out.Scanned != 3 {
+		t.Fatalf("hidden on: groups=%v scanned=%d, want %v and 3 files", got, out.Scanned, want)
+	}
+}

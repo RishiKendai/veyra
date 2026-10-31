@@ -23,6 +23,7 @@ import (
 type Result struct {
 	Type      model.MediaType
 	Recursive bool
+	Hidden    bool   // include hidden files and folders
 	Root      string // absolute, validated
 	Quit      bool
 }
@@ -61,6 +62,7 @@ type screen int
 
 const (
 	scMenu screen = iota
+	scHidden
 	scBrowse
 	scType
 )
@@ -80,6 +82,7 @@ type Model struct {
 	sc     screen
 	cursor int // menu row, or browser row
 	picked choice
+	hidden bool // answer to "include hidden files?"
 
 	dir        string
 	items      []dirItem
@@ -113,7 +116,7 @@ func (m *Model) quit() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) finish(root string) (tea.Model, tea.Cmd) {
-	m.result = Result{Type: m.picked.typ, Recursive: m.picked.recursive, Root: root}
+	m.result = Result{Type: m.picked.typ, Recursive: m.picked.recursive, Hidden: m.hidden, Root: root}
 	m.done = true
 	return m, tea.Quit
 }
@@ -130,6 +133,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.sc {
 		case scMenu:
 			return m.updateMenu(msg)
+		case scHidden:
+			return m.updateHidden(msg)
 		case scBrowse:
 			return m.updateBrowse(msg)
 		default:
@@ -166,6 +171,30 @@ func (m *Model) selectChoice() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.picked, m.err = c, ""
+	m.sc, m.cursor = scHidden, 0 // default answer: No
+	return m, nil
+}
+
+// updateHidden asks whether hidden files and folders should be scanned too.
+// Row 0 is "No" (the default), row 1 is "Yes".
+func (m *Model) updateHidden(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch k.String() {
+	case "esc", "q":
+		m.sc, m.cursor, m.err = scMenu, 0, ""
+		return m, nil
+	case "up", "k", "down", "j":
+		m.cursor = 1 - m.cursor
+		return m, nil
+	case "n", "N":
+		m.cursor = 0
+	case "y", "Y":
+		m.cursor = 1
+	case "enter":
+	default:
+		return m, nil
+	}
+	m.hidden = m.cursor == 1
+	m.showHidden = m.hidden // the folder list shows hidden folders too when they will be scanned
 	m.sc, m.cursor = scBrowse, 0
 	m.load(m.dir)
 	return m, nil
@@ -208,7 +237,11 @@ func (m *Model) load(dir string) {
 func (m *Model) updateBrowse(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch s := k.String(); s {
 	case "esc", "q":
-		m.sc, m.cursor, m.err = scMenu, 0, ""
+		m.sc, m.err = scHidden, ""
+		m.cursor = 0
+		if m.hidden {
+			m.cursor = 1
+		}
 	case "up", "k":
 		m.cursor = (m.cursor + len(m.items) - 1) % len(m.items)
 	case "down", "j":
@@ -308,6 +341,18 @@ func (m *Model) View() string {
 			}
 		}
 		b.WriteString("\n" + sDim.Render("↑↓ move · Enter select · 1-4 jump · Q quit"))
+	case scHidden:
+		b.WriteString(sSel.Render(m.picked.label) + "\n\n")
+		b.WriteString("Include hidden files and folders?\n")
+		b.WriteString(sDim.Render("Hidden = names starting with '.' (like .git or .DS_Store) and files your system marks hidden.") + "\n\n")
+		for i, r := range []string{"No, skip hidden files (recommended)", "Yes, include hidden files and folders"} {
+			if i == m.cursor {
+				b.WriteString(sSel.Render("\u25b8 "+r) + "\n")
+			} else {
+				b.WriteString("  " + r + "\n")
+			}
+		}
+		b.WriteString("\n" + sDim.Render("\u2191\u2193 move \u00b7 Enter select \u00b7 N no \u00b7 Y yes \u00b7 Esc back"))
 	case scBrowse:
 		b.WriteString(sSel.Render(m.picked.label) + sDim.Render(" — choose the folder to scan") + "\n")
 		b.WriteString(sDim.Render(m.dir) + "\n\n")
