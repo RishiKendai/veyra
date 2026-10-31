@@ -1,0 +1,5 @@
+/veyra
+/veyra.exe
+/dist/
+*.test
+*.prof
