@@ -1,0 +1,61 @@
+version: 2
+project_name: veyra
+
+# Two builds so each archive can carry the installer for its own OS.
+builds:
+  - id: unix
+    main: ./cmd/veyra
+    binary: veyra
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+  - id: windows
+    main: ./cmd/veyra
+    binary: veyra
+    env:
+      - CGO_ENABLED=0
+    goos: [windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+# Archive names carry no version so the installers can use the stable
+# releases/latest/download/ URLs. Each archive contains the binary, the README
+# and an installer that puts the binary on the user's PATH.
+archives:
+  - id: unix
+    ids: [unix]
+    name_template: "veyra_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    files: [README.md, install.sh]
+  - id: windows
+    ids: [windows]
+    name_template: "veyra_{{ .Os }}_{{ .Arch }}"
+    formats: [zip]
+    files: [README.md, install.ps1, install.cmd]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+
+# Needs the repository RishiKendai/homebrew-tap and a HOMEBREW_TAP_TOKEN secret
+# (a token with write access to that repository).
+brews:
+  - name: veyra
+    repository:
+      owner: RishiKendai
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://github.com/RishiKendai/veyra
+    description: Find duplicate and visually similar images and videos
+    dependencies:
+      - name: ffmpeg
+    test: |
+      system "#{bin}/veyra", "version"
