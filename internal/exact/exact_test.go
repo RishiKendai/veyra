@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -118,6 +119,9 @@ func TestNoCacheGivesSameAnswer(t *testing.T) {
 
 // A file that cannot be read while the "drive" is down is retried, not skipped.
 func TestHashingWaitsForDriveAndRetries(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission bits are not enforced on Windows")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores file permissions")
 	}
@@ -181,6 +185,9 @@ func TestMiddleDifferenceCaughtByPrehash(t *testing.T) {
 }
 
 func TestCacheUsedAndInvalidated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission bits are not enforced on Windows")
+	}
 	root := t.TempDir()
 	data := bytes.Repeat([]byte("xyz"), 100<<10)
 	files := []model.File{mk(t, root, "a", data), mk(t, root, "b", data)}

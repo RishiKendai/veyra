@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -207,6 +208,9 @@ func TestVideoPipeline(t *testing.T) {
 
 // A cancelled scan must not leave ffmpeg/ffprobe children behind.
 func TestCancelKillsChildProcesses(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses ps, which Windows does not have")
+	}
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		t.Skip("ffmpeg not installed")
 	}
@@ -234,6 +238,9 @@ func TestCancelKillsChildProcesses(t *testing.T) {
 
 // Fingerprinting waits for a returning drive instead of dropping the image.
 func TestFingerprintingWaitsForDriveAndRetries(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission bits are not enforced on Windows")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores file permissions")
 	}
@@ -292,6 +299,9 @@ func TestIOWorkers(t *testing.T) {
 // persistent caches: with every file unreadable it still finds the same groups,
 // and a modified file is recomputed (and so reported unreadable) instead of trusted.
 func TestRepeatScanServedFromCache(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission bits are not enforced on Windows")
+	}
 	root := tempRoot(t)
 	a := pic(2)
 	writePNG(t, filepath.Join(root, "a.png"), a)

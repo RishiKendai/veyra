@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -165,6 +166,9 @@ func TestHardLinksCollapsed(t *testing.T) {
 }
 
 func TestUnreadableSubdirMarksPartial(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission bits are not enforced on Windows")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("root can read everything")
 	}

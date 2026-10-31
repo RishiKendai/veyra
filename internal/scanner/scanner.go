@@ -154,7 +154,7 @@ func Scan(ctx context.Context, opts Options) (Result, error) {
 					continue
 				}
 				prog.Seen.Add(1)
-				dev, ino, nlink := devIno(fi)
+				dev, ino, nlink := devIno(path, fi)
 				select {
 				case work <- model.File{Path: path, Size: fi.Size(), ModTime: fi.ModTime(), Dev: dev, Ino: ino, Nlink: nlink}:
 				case <-ctx.Done():
