@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="Veyra: Find · Match · Declutter" width="640">
+</p>
+
 # VEYRA
 
 **V**isual **E**xploration & **Y**ield-based **R**ecognition **A**ssistant. Find duplicate and visually similar
