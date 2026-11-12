@@ -437,8 +437,18 @@ func perceptualEdges(ctx context.Context, t model.MediaType, nodes []node, worke
 			return nil, failed, err
 		}
 		prof.Since("STAGE tier1 fingerprints", tier1Start, 0)
+		edges := similarity.VideoEdges(fps, skip)
+
+		// Step 3: different cuts of the same footage (another intro, removed
+		// scenes, letterboxing). Only pairs the 16-frame tier did not already
+		// match, with similar durations, are looked at.
+		seqEdges, err := seqEdges(ctx, nodes, durations, skip, edges, workers, guard, report, cc)
+		if err != nil {
+			return nil, failed, err
+		}
+		edges = append(edges, seqEdges...)
 		report(progress.Group, 0, 0)
-		return similarity.VideoEdges(fps, skip), failed, nil
+		return edges, failed, nil
 	}
 	return nil, nil, fmt.Errorf("unsupported media type %q", t)
 }
@@ -460,3 +470,108 @@ func ioWorkers(root string, t model.MediaType) int {
 // isExternal reports whether root is on a mounted volume rather than the
 // internal disk. Such volumes may be spinning disks.
 func isExternal(root string) bool { return strings.HasPrefix(root, "/Volumes/") }
+
+// seqEdges matches videos by keyframe sequence (vidfp.Seq). The keyframes of
+// every video that has a candidate partner are decoded once, in one ffmpeg
+// pass each, and cached; comparing pairs afterwards is pure in-memory work
+// spread over all cores. A video whose keyframes cannot be decoded is simply
+// not matched by this tier.
+func seqEdges(ctx context.Context, nodes []node, durations []float64, skip []bool, have []similarity.Edge, workers int, guard *volume.Guard, report func(string, int, int), cc *caches) ([]similarity.Edge, error) {
+	type pair struct{ a, b int }
+	matched := make(map[pair]struct{}, len(have))
+	for _, e := range have {
+		matched[pair{e.A, e.B}] = struct{}{}
+	}
+	pairs := similarity.SeqPairs(durations, skip, func(a, b int) bool {
+		_, ok := matched[pair{a, b}]
+		return ok
+	})
+	if len(pairs) == 0 {
+		return nil, nil
+	}
+	need := make([]bool, len(nodes))
+	for _, p := range pairs {
+		need[p[0]], need[p[1]] = true, true
+	}
+	sc := cc.get("vidseq.cache", vidfp.SeqCodecVersion)
+	seqs := make([]*vidfp.Seq, len(nodes))
+	var todo []int
+	cands := 0
+	for i := range nodes {
+		if !need[i] {
+			continue
+		}
+		cands++
+		f := nodes[i].files[0]
+		if b, ok := sc.GetData(f.Path, f.Size, f.ModTime); ok {
+			if s, ok := vidfp.DecodeSeq(b); ok {
+				seqs[i] = &s
+				continue
+			}
+		}
+		todo = append(todo, i)
+	}
+	if prof.Enabled {
+		fmt.Fprintf(os.Stderr, "veyra: profile: %d candidate pairs, %d videos, %d keyframe passes needed\n", len(pairs), cands, len(todo))
+	}
+	t0 := prof.Start()
+	// Longest first, so the slowest decodes do not end up last.
+	sort.Slice(todo, func(x, y int) bool { return durations[todo[x]] > durations[todo[y]] })
+	var mu sync.Mutex
+	done := cands - len(todo)
+	if done > 0 {
+		report(progress.Fingerprint, done, cands)
+	}
+	err := workpool.ForEach(ctx, workers, todo, func(i int) {
+		f := nodes[i].files[0]
+		var s vidfp.Seq
+		err := guard.Do(ctx, func() error {
+			var e error
+			s, e = vidfp.ComputeSeq(ctx, f.Path, f.Duration)
+			return e
+		})
+		if err == nil {
+			seqs[i] = &s
+			sc.PutData(f.Path, f.Size, f.ModTime, s.Encode())
+		}
+		mu.Lock()
+		done++
+		d := done
+		mu.Unlock()
+		report(progress.Fingerprint, d, cands)
+	})
+	if err != nil {
+		return nil, err
+	}
+	prof.Since("STAGE keyframe sequences", t0, 0)
+
+	var out []similarity.Edge
+	idx := make([]int, len(pairs))
+	for i := range idx {
+		idx[i] = i
+	}
+	err = workpool.ForEach(ctx, runtime.NumCPU(), idx, func(k int) {
+		a, b := pairs[k][0], pairs[k][1]
+		if seqs[a] == nil || seqs[b] == nil {
+			return
+		}
+		if n, ok := similarity.SeqMatch(seqs[a], seqs[b]); ok {
+			mu.Lock()
+			out = append(out, similarity.Edge{A: a, B: b, Dist: 1000 - min(n, 999)})
+			mu.Unlock()
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(out, func(x, y int) bool {
+		if out[x].Dist != out[y].Dist {
+			return out[x].Dist < out[y].Dist
+		}
+		if out[x].A != out[y].A {
+			return out[x].A < out[y].A
+		}
+		return out[x].B < out[y].B
+	})
+	return out, nil
+}

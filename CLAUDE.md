@@ -8,7 +8,7 @@ Your mission is to build a reliable, local-first, cross-platform application tha
 
 - **Name and module:** the product and executable are `veyra`; Go module `github.com/RishiKendai/veyra`; repository `https://github.com/RishiKendai/veyra`. Any `dedup` in older text below means `veyra`.
 - **Platforms:** macOS, Linux and Windows (amd64 and arm64) are supported release targets. macOS is the reference platform and the only one that has been run by hand; Linux and Windows are covered by unit tests, cross-compilation and CI, and must be described as such until confirmed on real machines. Native actions live in `internal/platform` and are chosen per OS at run time.
-- **Video matching:** exact bytes (BLAKE3) or whole-video visual similarity (16 sampled frames, see 6.3). The earlier "different cut / keyframe" tier was removed on purpose: clips taken from longer videos and different releases of a film are not detected, and the code, caches and docs no longer mention it.
+- **Video matching:** exact bytes (BLAKE3) or whole-video visual similarity (16 sampled frames, see 6.3). A second, keyframe-sequence tier (`vidfp/seq.go`, `similarity/videoseq.go`) was added at the user's request to match different cuts of the same film (other intro, removed scenes, letterboxing, resolution): keyframes are hashed with timestamps and matched by a consistent time offset. Clips taken from much longer videos are still not detected.
 - **Entry points:** flags, `veyra help`, `veyra version`, and an interactive menu when run with no arguments (section 2).
 - **Distribution:** see section 18.
 
